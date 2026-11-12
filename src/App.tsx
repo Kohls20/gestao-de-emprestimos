@@ -6,11 +6,12 @@ import {
   Plus,
   UserRoundPlus,
   Wallet,
+  LoaderCircle,
 } from 'lucide-react';
+import { AuthenticationScreen } from './components/auth/AuthenticationScreen';
 import { Header } from './components/dashboard/Header';
 import { SummaryCard } from './components/dashboard/SummaryCard';
 import { ManageDataModal } from './components/security/ManageDataModal';
-import { EncryptionGate } from './components/security/EncryptionGate';
 import {
   NewPersonModal,
   type NewPersonFormValues,
@@ -21,11 +22,13 @@ import {
 } from './components/transactions/NewTransactionModal';
 import { TransactionsTable } from './components/transactions/TransactionsTable';
 import { useLedger } from './context/LedgerContext';
+import { useAuth } from './contexts/AuthContext';
 import type { Transaction } from './types/ledger';
 
 type ActiveModal = 'person' | 'transaction' | 'data' | null;
 
 function Dashboard() {
+  const { user, logout } = useAuth();
   const {
     persons,
     transactions,
@@ -45,6 +48,7 @@ function Dashboard() {
   const [editingTransaction, setEditingTransaction] =
     useState<Transaction | null>(null);
   const [feedback, setFeedback] = useState('');
+  const [logoutError, setLogoutError] = useState('');
   const totalToReceive = getTotalToReceive();
   const totalToPay = getTotalToPay();
 
@@ -52,6 +56,17 @@ function Dashboard() {
     setActiveModal(null);
     setEditingTransaction(null);
   }, []);
+
+  async function handleLogout() {
+    setLogoutError('');
+    try {
+      await logout();
+    } catch (error) {
+      setLogoutError(
+        error instanceof Error ? error.message : 'Não foi possível sair da conta.',
+      );
+    }
+  }
 
   useEffect(() => {
     if (!feedback) return;
@@ -119,7 +134,7 @@ function Dashboard() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      <Header />
+      <Header email={user?.email ?? ''} onLogout={handleLogout} />
       <main className="mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-10">
         <div className="mb-7 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -208,20 +223,26 @@ function Dashboard() {
           persons={persons}
           transactions={transactions}
         />
+        {logoutError && (
+          <p
+            className="mt-5 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-200"
+            role="alert"
+          >
+            {logoutError}
+          </p>
+        )}
         {storageError && (
           <p
             className="mt-5 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm leading-6 text-rose-200"
             role="alert"
           >
-            {storageError} Seus dados permanecem disponíveis nesta sessão, mas
-            talvez não estejam persistidos no dispositivo. Libere espaço no
-            navegador e tente novamente.
+            {storageError} Verifique sua conexão e as regras do Firestore antes
+            de continuar editando seus dados.
           </p>
         )}
       </main>
       <footer className="mx-auto max-w-7xl px-5 pb-8 text-center text-xs leading-5 text-slate-500 sm:px-8">
-        🔒 Seus dados estão seguros e criptografados localmente no seu
-        dispositivo. Nenhum dado é enviado para servidores externos.
+        🔒 Seus dados são sincronizados com segurança na sua conta do Firebase.
       </footer>
       {activeModal === 'person' && (
         <NewPersonModal
@@ -274,25 +295,41 @@ function Dashboard() {
 }
 
 export default function App() {
-  const {
-    encryptionStatus,
-    hasLegacyData,
-    storageError,
-    setupEncryption,
-    unlockEncryption,
-  } = useLedger();
+  const { user, loading: authLoading } = useAuth();
+  const { loading: ledgerLoading, ready: ledgerReady, storageError } =
+    useLedger();
 
-  if (encryptionStatus !== 'ready') {
+  if (authLoading || (user && ledgerLoading)) {
     return (
-      <EncryptionGate
-        hasLegacyData={hasLegacyData}
-        onSetup={setupEncryption}
-        onUnlock={unlockEncryption}
-        status={encryptionStatus}
-        storageError={storageError}
-      />
+      <main className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-300">
+        <div className="flex items-center gap-3 text-sm" role="status">
+          <LoaderCircle className="animate-spin text-blue-400" size={20} />
+          Carregando sua conta e seus dados...
+        </div>
+      </main>
     );
   }
 
-  return <Dashboard />;
+  if (user && !ledgerReady) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-950 px-5 text-slate-100">
+        <section className="w-full max-w-lg rounded-2xl border border-rose-500/30 bg-slate-900 p-6 shadow-2xl">
+          <h1 className="text-lg font-semibold">Não foi possível carregar seus dados</h1>
+          <p className="mt-2 text-sm leading-6 text-slate-300">
+            {storageError ??
+              'Aguarde a conexão com o Firestore para acessar seu ledger.'}
+          </p>
+          <button
+            className="mt-5 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-500"
+            onClick={() => window.location.reload()}
+            type="button"
+          >
+            Tentar novamente
+          </button>
+        </section>
+      </main>
+    );
+  }
+
+  return user ? <Dashboard /> : <AuthenticationScreen />;
 }

@@ -169,7 +169,7 @@ export function ManageDataModal({
 
   return (
     <Modal
-      description="Exporte uma cópia protegida, restaure um backup ou apague os dados deste dispositivo."
+      description="Exporte uma cópia protegida, restaure um backup ou apague os dados da sua conta."
       onClose={onClose}
       title="Gerenciar dados"
     >
@@ -236,7 +236,7 @@ export function ManageDataModal({
               Importar backup
             </h3>
             <p className="mt-1 text-xs leading-5 text-slate-400">
-              A restauração substitui os dados atuais deste dispositivo.
+              A restauração substitui os dados atuais da sua conta no Firestore.
             </p>
           </div>
           <FormField id="backup-file" label="Arquivo JSON">
@@ -276,8 +276,9 @@ export function ManageDataModal({
               Apagar todos os dados
             </h3>
             <p className="mt-1 text-xs leading-5 text-slate-400">
-              A exclusão é permanente e remove os dados locais criptografados.
-              Exporte um backup antes, se quiser conservar uma cópia.
+              A exclusão é permanente e remove os dados da sua conta no
+              Firestore. Exporte um backup antes, se quiser conservar uma
+              cópia.
             </p>
           </div>
           <FormField id="delete-confirmation" label="Digite APAGAR para confirmar">
@@ -320,7 +321,7 @@ export function ManageDataModal({
         )}
         {isBusy && (
           <p className="text-center text-xs text-slate-400" role="status">
-            Processando arquivo localmente...
+            Processando backup localmente...
           </p>
         )}
       </div>

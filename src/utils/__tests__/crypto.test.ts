@@ -7,7 +7,7 @@ import {
 } from '../crypto';
 import type { LedgerData } from '../../types/ledger';
 
-const password = 'senha-mestra-segura-123';
+const password = 'senha-de-backup-segura-123';
 const ledgerData: LedgerData = {
   persons: [
     {
@@ -38,24 +38,24 @@ function alterBase64Character(value: string): string {
 }
 
 describe('criptografia de dados e backups', () => {
-  let localEnvelope: EncryptedEnvelope;
+  let backupEnvelope: EncryptedEnvelope;
 
   beforeAll(async () => {
-    localEnvelope = await encryptJsonWithPassword(ledgerData, password, 'local');
+    backupEnvelope = await encryptJsonWithPassword(ledgerData, password, 'backup');
   });
 
   it('criptografa e descriptografa os dados com AES-GCM-256 e PBKDF2', async () => {
     const key = await deriveEncryptionKey(
       password,
-      localEnvelope.salt,
-      localEnvelope.iterations,
+      backupEnvelope.salt,
+      backupEnvelope.iterations,
     );
 
     expect(key.algorithm).toMatchObject({ name: 'AES-GCM', length: 256 });
-    expect(localEnvelope.kdf).toBe('PBKDF2-SHA-256');
-    expect(localEnvelope.iterations).toBe(310_000);
+    expect(backupEnvelope.kdf).toBe('PBKDF2-SHA-256');
+    expect(backupEnvelope.iterations).toBe(310_000);
     await expect(
-      decryptJsonWithPassword<LedgerData>(localEnvelope, password, 'local'),
+      decryptJsonWithPassword<LedgerData>(backupEnvelope, password, 'backup'),
     ).resolves.toEqual(ledgerData);
   });
 
@@ -63,7 +63,7 @@ describe('criptografia de dados e backups', () => {
     'rejeita senha incorreta ou vazia: %j',
     async (incorrectPassword) => {
       await expect(
-        decryptJsonWithPassword(localEnvelope, incorrectPassword, 'local'),
+        decryptJsonWithPassword(backupEnvelope, incorrectPassword, 'backup'),
       ).rejects.toThrow();
     },
   );
@@ -72,19 +72,19 @@ describe('criptografia de dados e backups', () => {
     'rejeita dados adulterados no campo %s',
     async (field) => {
       const tamperedEnvelope = {
-        ...localEnvelope,
-        [field]: alterBase64Character(localEnvelope[field]),
+        ...backupEnvelope,
+        [field]: alterBase64Character(backupEnvelope[field]),
       };
 
       await expect(
-        decryptJsonWithPassword(tamperedEnvelope, password, 'local'),
+        decryptJsonWithPassword(tamperedEnvelope, password, 'backup'),
       ).rejects.toThrow();
     },
   );
 
   it('usa salt e IV aleatórios para cifrar o mesmo conteúdo', async () => {
-    const first = await encryptJsonWithPassword(ledgerData, password, 'local');
-    const second = await encryptJsonWithPassword(ledgerData, password, 'local');
+    const first = await encryptJsonWithPassword(ledgerData, password, 'backup');
+    const second = await encryptJsonWithPassword(ledgerData, password, 'backup');
 
     expect(first.ciphertext).not.toBe(second.ciphertext);
     expect(first.iv).not.toBe(second.iv);

@@ -2,7 +2,7 @@ const ENVELOPE_FORMAT = 'p2p-ledger-encrypted';
 const ENVELOPE_VERSION = 1;
 const DEFAULT_ITERATIONS = 310_000;
 
-export type EncryptionPurpose = 'local' | 'backup';
+export type EncryptionPurpose = 'backup';
 
 export interface EncryptedEnvelope {
   format: typeof ENVELOPE_FORMAT;
@@ -54,7 +54,7 @@ export function isEncryptedEnvelope(
   return (
     envelope.format === ENVELOPE_FORMAT &&
     envelope.version === ENVELOPE_VERSION &&
-    (envelope.purpose === 'local' || envelope.purpose === 'backup') &&
+    envelope.purpose === 'backup' &&
     envelope.algorithm === 'AES-GCM' &&
     envelope.kdf === 'PBKDF2-SHA-256' &&
     typeof envelope.iterations === 'number' &&
