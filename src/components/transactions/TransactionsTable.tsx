@@ -1,10 +1,18 @@
-import { ArrowDownLeft, ArrowUpRight, ReceiptText } from 'lucide-react';
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  Pencil,
+  ReceiptText,
+  Trash2,
+} from 'lucide-react';
 import type { Person, Transaction } from '../../types/ledger';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 
 interface TransactionsTableProps {
   persons: Person[];
   transactions: Transaction[];
+  onEdit: (transaction: Transaction) => void;
+  onDelete: (transaction: Transaction) => void;
 }
 
 const transactionLabels: Record<Transaction['type'], string> = {
@@ -33,6 +41,8 @@ function amountSign(type: Transaction['type']): 1 | -1 {
 export function TransactionsTable({
   persons,
   transactions,
+  onEdit,
+  onDelete,
 }: TransactionsTableProps) {
   const personsById = new Map(persons.map((person) => [person.id, person.name]));
   const sortedTransactions = [...transactions].sort(
@@ -77,6 +87,7 @@ export function TransactionsTable({
                 <th className="px-6 py-3 font-medium">Data</th>
                 <th className="px-6 py-3 font-medium">Status</th>
                 <th className="px-6 py-3 text-right font-medium">Valor</th>
+                <th className="px-6 py-3 text-right font-medium">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800">
@@ -118,6 +129,28 @@ export function TransactionsTable({
                         <Icon size={14} />
                         {formatCurrency(transaction.amount)}
                       </span>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-4 text-right">
+                      <div className="inline-flex items-center gap-1">
+                        <button
+                          aria-label={`Editar lançamento de ${personsById.get(transaction.personId) ?? 'pessoa removida'}`}
+                          className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          onClick={() => onEdit(transaction)}
+                          title="Editar lançamento"
+                          type="button"
+                        >
+                          <Pencil size={16} />
+                        </button>
+                        <button
+                          aria-label={`Excluir lançamento de ${personsById.get(transaction.personId) ?? 'pessoa removida'}`}
+                          className="rounded-lg p-2 text-slate-400 transition hover:bg-rose-500/10 hover:text-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-500"
+                          onClick={() => onDelete(transaction)}
+                          title="Excluir lançamento"
+                          type="button"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

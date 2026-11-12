@@ -21,6 +21,7 @@ import {
 } from './components/transactions/NewTransactionModal';
 import { TransactionsTable } from './components/transactions/TransactionsTable';
 import { useLedger } from './context/LedgerContext';
+import type { Transaction } from './types/ledger';
 
 type ActiveModal = 'person' | 'transaction' | 'data' | null;
 
@@ -33,15 +34,24 @@ function Dashboard() {
     storageError,
     addPerson,
     addTransaction,
+    updatePerson,
+    removePerson,
+    updateTransaction,
+    removeTransaction,
     getTotalToPay,
     getTotalToReceive,
   } = useLedger();
   const [activeModal, setActiveModal] = useState<ActiveModal>(null);
+  const [editingTransaction, setEditingTransaction] =
+    useState<Transaction | null>(null);
   const [feedback, setFeedback] = useState('');
   const totalToReceive = getTotalToReceive();
   const totalToPay = getTotalToPay();
 
-  const closeModal = useCallback(() => setActiveModal(null), []);
+  const closeModal = useCallback(() => {
+    setActiveModal(null);
+    setEditingTransaction(null);
+  }, []);
 
   useEffect(() => {
     if (!feedback) return;
@@ -57,16 +67,45 @@ function Dashboard() {
   }
 
   function handleAddTransaction(transaction: NewTransactionFormValues) {
-    addTransaction({
-      ...transaction,
-      status:
-        transaction.type === 'PAYMENT_RECEIVED' ||
-        transaction.type === 'PAYMENT_MADE'
-          ? 'PAID'
-          : 'PENDING',
-    });
+    addTransaction(transaction);
     closeModal();
     setFeedback('Lançamento cadastrado com sucesso.');
+  }
+
+  function handleSaveTransaction(transaction: NewTransactionFormValues) {
+    if (editingTransaction) {
+      updateTransaction(editingTransaction.id, transaction);
+      setFeedback('Lançamento atualizado com sucesso.');
+    } else {
+      handleAddTransaction(transaction);
+      return;
+    }
+
+    closeModal();
+  }
+
+  function handleDeleteTransaction(transaction: Transaction) {
+    const personName =
+      persons.find((person) => person.id === transaction.personId)?.name ??
+      'esta pessoa';
+    if (
+      window.confirm(
+        `Excluir o lançamento de ${personName} no valor de ${transaction.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}?`,
+      )
+    ) {
+      removeTransaction(transaction.id);
+      setFeedback('Lançamento excluído com sucesso.');
+    }
+  }
+
+  function handleUpdatePerson(personId: string, name: string) {
+    updatePerson(personId, { name });
+    setFeedback('Pessoa atualizada com sucesso.');
+  }
+
+  function handleDeletePerson(personId: string) {
+    removePerson(personId);
+    setFeedback('Pessoa e lançamentos vinculados excluídos com sucesso.');
   }
 
   function handleImportData(importedData: {
@@ -160,7 +199,15 @@ function Dashboard() {
           />
         </section>
 
-        <TransactionsTable persons={persons} transactions={transactions} />
+        <TransactionsTable
+          onDelete={handleDeleteTransaction}
+          onEdit={(transaction) => {
+            setEditingTransaction(transaction);
+            setActiveModal('transaction');
+          }}
+          persons={persons}
+          transactions={transactions}
+        />
         {storageError && (
           <p
             className="mt-5 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm leading-6 text-rose-200"
@@ -177,13 +224,28 @@ function Dashboard() {
         dispositivo. Nenhum dado é enviado para servidores externos.
       </footer>
       {activeModal === 'person' && (
-        <NewPersonModal onClose={closeModal} onSave={handleAddPerson} />
+        <NewPersonModal
+          onClose={closeModal}
+          onDelete={handleDeletePerson}
+          onSave={handleAddPerson}
+          onUpdate={handleUpdatePerson}
+          persons={persons}
+          transactionCounts={transactions.reduce<Record<string, number>>(
+            (counts, transaction) => {
+              counts[transaction.personId] =
+                (counts[transaction.personId] ?? 0) + 1;
+              return counts;
+            },
+            {},
+          )}
+        />
       )}
       {activeModal === 'transaction' && (
         <NewTransactionModal
           onClose={closeModal}
-          onSave={handleAddTransaction}
+          onSave={handleSaveTransaction}
           persons={persons}
+          transaction={editingTransaction ?? undefined}
         />
       )}
       {activeModal === 'data' && (

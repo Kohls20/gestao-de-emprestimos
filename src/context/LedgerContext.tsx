@@ -20,6 +20,12 @@ import {
   calculateTotalToPay,
   calculateTotalToReceive,
 } from '../utils/balances';
+import {
+  removePersonFromLedger,
+  removeTransactionFromLedger,
+  updatePersonInLedger,
+  updateTransactionInLedger,
+} from '../utils/ledgerMutations';
 
 type NewPerson = Omit<Person, 'id' | 'createdAt'>;
 type PersonUpdates = Partial<NewPerson>;
@@ -92,23 +98,13 @@ export function LedgerProvider({ children }: { children: ReactNode }) {
 
   const updatePerson = useCallback(
     (personId: string, updates: PersonUpdates) => {
-      setData((current) => ({
-        ...current,
-        persons: current.persons.map((person) =>
-          person.id === personId ? { ...person, ...updates } : person,
-        ),
-      }));
+      setData((current) => updatePersonInLedger(current, personId, updates));
     },
     [setData],
   );
 
   const removePerson = useCallback((personId: string) => {
-    setData((current) => ({
-      persons: current.persons.filter((person) => person.id !== personId),
-      transactions: current.transactions.filter(
-        (transaction) => transaction.personId !== personId,
-      ),
-    }));
+    setData((current) => removePersonFromLedger(current, personId));
   }, [setData]);
 
   const addTransaction = useCallback((transaction: NewTransaction) => {
@@ -127,25 +123,15 @@ export function LedgerProvider({ children }: { children: ReactNode }) {
 
   const updateTransaction = useCallback(
     (transactionId: string, updates: TransactionUpdates) => {
-      setData((current) => ({
-        ...current,
-        transactions: current.transactions.map((transaction) =>
-          transaction.id === transactionId
-            ? { ...transaction, ...updates }
-            : transaction,
-        ),
-      }));
+      setData((current) =>
+        updateTransactionInLedger(current, transactionId, updates),
+      );
     },
     [setData],
   );
 
   const removeTransaction = useCallback((transactionId: string) => {
-    setData((current) => ({
-      ...current,
-      transactions: current.transactions.filter(
-        (transaction) => transaction.id !== transactionId,
-      ),
-    }));
+    setData((current) => removeTransactionFromLedger(current, transactionId));
   }, [setData]);
 
   const getTotalToReceive = useCallback(

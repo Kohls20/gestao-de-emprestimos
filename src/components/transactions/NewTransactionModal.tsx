@@ -1,5 +1,10 @@
 import { useState, type FormEvent } from 'react';
-import type { Person, TransactionType } from '../../types/ledger';
+import type {
+  Person,
+  Transaction,
+  TransactionStatus,
+  TransactionType,
+} from '../../types/ledger';
 import { FormActions } from '../common/FormActions';
 import {
   fieldAccessibilityProps,
@@ -15,10 +20,12 @@ export interface NewTransactionFormValues {
   date: string;
   description: string;
   category: string;
+  status: TransactionStatus;
 }
 
 interface NewTransactionModalProps {
   persons: Person[];
+  transaction?: Transaction;
   onClose: () => void;
   onSave: (transaction: NewTransactionFormValues) => void;
 }
@@ -45,15 +52,25 @@ interface TransactionErrors {
 
 export function NewTransactionModal({
   persons,
+  transaction,
   onClose,
   onSave,
 }: NewTransactionModalProps) {
-  const [personId, setPersonId] = useState(persons[0]?.id ?? '');
-  const [type, setType] = useState<TransactionType>('LEND');
-  const [amount, setAmount] = useState('');
-  const [date, setDate] = useState(getLocalDateValue);
-  const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('');
+  const [personId, setPersonId] = useState(
+    transaction?.personId ?? persons[0]?.id ?? '',
+  );
+  const [type, setType] = useState<TransactionType>(transaction?.type ?? 'LEND');
+  const [amount, setAmount] = useState(
+    transaction ? String(transaction.amount) : '',
+  );
+  const [date, setDate] = useState(
+    transaction?.date.slice(0, 10) ?? getLocalDateValue,
+  );
+  const [description, setDescription] = useState(transaction?.description ?? '');
+  const [category, setCategory] = useState(transaction?.category ?? '');
+  const [status, setStatus] = useState<TransactionStatus>(
+    transaction?.status ?? 'PENDING',
+  );
   const [errors, setErrors] = useState<TransactionErrors>({});
   const [isSaving, setIsSaving] = useState(false);
 
@@ -72,6 +89,13 @@ export function NewTransactionModal({
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
+    const savedStatus =
+      transaction === undefined
+        ? type === 'PAYMENT_RECEIVED' || type === 'PAYMENT_MADE'
+          ? 'PAID'
+          : 'PENDING'
+        : status;
+
     setIsSaving(true);
     onSave({
       personId,
@@ -80,14 +104,19 @@ export function NewTransactionModal({
       date,
       description: description.trim(),
       category: category.trim(),
+      status: savedStatus,
     });
   }
 
   return (
     <Modal
-      description="Registre um empréstimo ou pagamento para atualizar seu saldo."
+      description={
+        transaction
+          ? 'Altere os dados do lançamento selecionado.'
+          : 'Registre um empréstimo ou pagamento para atualizar seu saldo.'
+      }
       onClose={onClose}
-      title="Novo lançamento"
+      title={transaction ? 'Editar lançamento' : 'Novo lançamento'}
     >
       <form noValidate onSubmit={handleSubmit}>
         <div className="space-y-4 px-5 py-5 sm:px-6">
@@ -119,9 +148,18 @@ export function NewTransactionModal({
             <select
               className={inputClassName}
               id="transaction-type"
-              onChange={(event) =>
-                setType(event.target.value as TransactionType)
-              }
+              onChange={(event) => {
+                const nextType = event.target.value as TransactionType;
+                setType(nextType);
+                if (!transaction) {
+                  setStatus(
+                    nextType === 'PAYMENT_RECEIVED' ||
+                      nextType === 'PAYMENT_MADE'
+                      ? 'PAID'
+                      : 'PENDING',
+                  );
+                }
+              }}
               value={type}
             >
               {transactionTypes.map((option) => (
@@ -131,6 +169,22 @@ export function NewTransactionModal({
               ))}
             </select>
           </FormField>
+          {transaction && (
+            <FormField id="transaction-status" label="Status">
+              <select
+                className={inputClassName}
+                id="transaction-status"
+                onChange={(event) =>
+                  setStatus(event.target.value as TransactionStatus)
+                }
+                value={status}
+              >
+                <option value="PENDING">Pendente</option>
+                <option value="PARTIAL">Parcial</option>
+                <option value="PAID">Pago</option>
+              </select>
+            </FormField>
+          )}
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField
               error={errors.amount}
@@ -207,7 +261,7 @@ export function NewTransactionModal({
         <FormActions
           isSaving={isSaving}
           onCancel={onClose}
-          submitLabel="Salvar lançamento"
+          submitLabel={transaction ? 'Salvar alterações' : 'Salvar lançamento'}
         />
       </form>
     </Modal>
