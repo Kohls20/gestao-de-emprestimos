@@ -5,6 +5,7 @@ import {
   Database,
   Plus,
   UserRoundPlus,
+  UsersRound,
   Wallet,
   LoaderCircle,
 } from 'lucide-react';
@@ -16,6 +17,7 @@ import {
   NewPersonModal,
   type NewPersonFormValues,
 } from './components/people/NewPersonModal';
+import { PeopleManager } from './components/people/PeopleManager';
 import {
   NewTransactionModal,
   type NewTransactionFormValues,
@@ -25,7 +27,7 @@ import { useLedger } from './context/LedgerContext';
 import { useAuth } from './contexts/AuthContext';
 import type { Transaction } from './types/ledger';
 
-type ActiveModal = 'person' | 'transaction' | 'data' | null;
+type ActiveModal = 'person' | 'people' | 'transaction' | 'data' | null;
 
 function Dashboard() {
   const { user, logout } = useAuth();
@@ -158,6 +160,14 @@ function Dashboard() {
               </button>
               <button
                 className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-sm font-semibold text-slate-200 shadow-sm transition hover:bg-slate-800 focus:outline-none focus:ring-4 focus:ring-slate-700"
+                onClick={() => setActiveModal('people')}
+                type="button"
+              >
+                <UsersRound size={17} />
+                Gerenciar pessoas
+              </button>
+              <button
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-sm font-semibold text-slate-200 shadow-sm transition hover:bg-slate-800 focus:outline-none focus:ring-4 focus:ring-slate-700"
                 onClick={() => setActiveModal('data')}
                 type="button"
               >
@@ -247,18 +257,16 @@ function Dashboard() {
       {activeModal === 'person' && (
         <NewPersonModal
           onClose={closeModal}
-          onDelete={handleDeletePerson}
           onSave={handleAddPerson}
+        />
+      )}
+      {activeModal === 'people' && (
+        <PeopleManager
+          onClose={closeModal}
+          onDelete={handleDeletePerson}
           onUpdate={handleUpdatePerson}
           persons={persons}
-          transactionCounts={transactions.reduce<Record<string, number>>(
-            (counts, transaction) => {
-              counts[transaction.personId] =
-                (counts[transaction.personId] ?? 0) + 1;
-              return counts;
-            },
-            {},
-          )}
+          transactions={transactions}
         />
       )}
       {activeModal === 'transaction' && (

@@ -58,6 +58,11 @@ describe('mutacoes do ledger', () => {
     expect(updated.persons[0].name).toBe('Ana Souza');
     expect(updated.persons[0].phone).toBe('11999999999');
     expect(updated.transactions).toEqual(ledger.transactions);
+    expect(
+      updated.persons.find(
+        (person) => person.id === updated.transactions[0].personId,
+      )?.name,
+    ).toBe('Ana Souza');
   });
 
   it('exclui pessoa e todos os lancamentos associados, preservando outros', () => {
