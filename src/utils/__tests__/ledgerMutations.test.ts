@@ -87,7 +87,7 @@ describe('mutacoes do ledger', () => {
       status: 'PAID',
     });
     expect(calculateTotalToReceive(updated.transactions)).toBe(0);
-    expect(calculateTotalToPay(updated.transactions)).toBe(100);
+    expect(calculateTotalToPay(updated.transactions)).toBe(40);
   });
 
   it('exclui lancamento e atualiza os totais financeiros', () => {

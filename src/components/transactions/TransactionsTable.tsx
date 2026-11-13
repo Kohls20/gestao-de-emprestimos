@@ -1,12 +1,19 @@
+import { useState } from 'react';
 import {
   ArrowDownLeft,
   ArrowUpRight,
   Pencil,
   ReceiptText,
+  Search,
   Trash2,
 } from 'lucide-react';
 import type { Person, Transaction } from '../../types/ledger';
 import { formatCurrency, formatDate } from '../../utils/formatters';
+import {
+  filterTransactions,
+  type TransactionStatusFilter,
+} from '../../utils/transactionFilters';
+import { FormField, inputClassName } from '../common/FormField';
 
 interface TransactionsTableProps {
   persons: Person[];
@@ -44,11 +51,30 @@ export function TransactionsTable({
   onEdit,
   onDelete,
 }: TransactionsTableProps) {
+  const [personFilter, setPersonFilter] = useState('ALL');
+  const [statusFilter, setStatusFilter] =
+    useState<TransactionStatusFilter>('ALL');
+  const [searchText, setSearchText] = useState('');
   const personsById = new Map(persons.map((person) => [person.id, person.name]));
-  const sortedTransactions = [...transactions].sort(
+  const filteredTransactions = filterTransactions(transactions, {
+    personId: personFilter,
+    status: statusFilter,
+    searchText,
+  });
+  const sortedTransactions = [...filteredTransactions].sort(
     (first, second) =>
       new Date(second.date).getTime() - new Date(first.date).getTime(),
   );
+  const filtersAreActive =
+    personFilter !== 'ALL' ||
+    statusFilter !== 'ALL' ||
+    searchText.trim().length > 0;
+
+  function clearFilters() {
+    setPersonFilter('ALL');
+    setStatusFilter('ALL');
+    setSearchText('');
+  }
 
   return (
     <section className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-card">
@@ -60,8 +86,75 @@ export function TransactionsTable({
           </p>
         </div>
         <span className="rounded-full bg-slate-800 px-3 py-1 text-xs font-medium text-slate-300">
-          {transactions.length} {transactions.length === 1 ? 'lançamento' : 'lançamentos'}
+          {sortedTransactions.length} de {transactions.length} lançamentos
         </span>
+      </div>
+
+      <div className="grid gap-4 border-b border-slate-800 px-5 py-4 sm:grid-cols-2 sm:px-6 lg:grid-cols-[1fr_1fr_2fr_auto] lg:items-end">
+        <FormField id="filter-person" label="Pessoa">
+          <select
+            className={inputClassName}
+            id="filter-person"
+            onChange={(event) => setPersonFilter(event.target.value)}
+            value={personFilter}
+          >
+            <option value="ALL">Todas as pessoas</option>
+            {persons.map((person) => (
+              <option key={person.id} value={person.id}>
+                {person.name}
+              </option>
+            ))}
+          </select>
+        </FormField>
+        <FormField id="filter-status" label="Status">
+          <select
+            className={inputClassName}
+            id="filter-status"
+            onChange={(event) => {
+              const status = event.target.value;
+              if (
+                status === 'ALL' ||
+                status === 'PENDING' ||
+                status === 'PARTIAL' ||
+                status === 'PAID'
+              ) {
+                setStatusFilter(status);
+              }
+            }}
+            value={statusFilter}
+          >
+            <option value="ALL">Todos os status</option>
+            <option value="PENDING">Pendentes</option>
+            <option value="PARTIAL">Parciais</option>
+            <option value="PAID">Pagos</option>
+          </select>
+        </FormField>
+        <FormField id="filter-search" label="Buscar descrição ou categoria">
+          <div className="relative">
+            <Search
+              aria-hidden="true"
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+              size={17}
+            />
+            <input
+              className={`${inputClassName} pl-10`}
+              id="filter-search"
+              onChange={(event) => setSearchText(event.target.value)}
+              placeholder="Digite para buscar"
+              type="search"
+              value={searchText}
+            />
+          </div>
+        </FormField>
+        {filtersAreActive && (
+          <button
+            className="rounded-xl border border-slate-700 px-3 py-2.5 text-sm font-medium text-slate-300 transition hover:bg-slate-800"
+            onClick={clearFilters}
+            type="button"
+          >
+            Limpar filtros
+          </button>
+        )}
       </div>
 
       {sortedTransactions.length === 0 ? (
@@ -70,12 +163,24 @@ export function TransactionsTable({
             <ReceiptText size={22} />
           </span>
           <h3 className="mt-4 text-sm font-semibold text-ink-950">
-            Ainda não há lançamentos
+            {transactions.length > 0
+              ? 'Nenhum lançamento corresponde aos filtros'
+              : 'Ainda não há lançamentos'}
           </h3>
           <p className="mt-1 max-w-sm text-sm leading-6 text-ink-500">
-            Seus empréstimos, acordos e pagamentos aparecerão aqui quando forem
-            cadastrados.
+            {transactions.length > 0
+              ? 'Altere os filtros para visualizar outros lançamentos.'
+              : 'Seus empréstimos, acordos e pagamentos aparecerão aqui quando forem cadastrados.'}
           </p>
+          {filtersAreActive && (
+            <button
+              className="mt-4 rounded-lg px-3 py-2 text-sm font-semibold text-blue-300 hover:bg-slate-800"
+              onClick={clearFilters}
+              type="button"
+            >
+              Limpar filtros
+            </button>
+          )}
         </div>
       ) : (
         <div className="overflow-x-auto">

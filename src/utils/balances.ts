@@ -5,7 +5,10 @@ export function calculatePersonBalance(
   transactions: Transaction[],
 ): number {
   return transactions.reduce((balance, transaction) => {
-    if (transaction.personId !== personId) {
+    if (
+      transaction.personId !== personId ||
+      transaction.status !== 'PENDING'
+    ) {
       return balance;
     }
 
